@@ -1,0 +1,13 @@
+# Secretos
+.env
+
+# Memoria y personalidad de Ali (datos personales: no se suben al repo)
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
