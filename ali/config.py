@@ -24,6 +24,13 @@ def _int(value: str | None, default: int) -> int:
         return default
 
 
+def _float(value: str | None, default: float) -> float:
+    try:
+        return float(value) if value not in (None, "") else default
+    except ValueError:
+        return default
+
+
 @dataclass
 class Config:
     # --- Claude ---
@@ -47,6 +54,14 @@ class Config:
     memories_per_turn: int = 5         # recuerdos que "le vienen a la mente" en cada mensaje
     max_session_messages: int = 160    # si la sesión crece más, se recorta lo más viejo
     skills: list[str] = field(default_factory=lambda: list(ALL_SKILLS))
+
+    # --- Telegram ---
+    telegram_token: str | None = None      # token que te da @BotFather
+    telegram_user_id: int | None = None    # tu ID de Telegram: sólo contigo habla Ali
+    telegram_session_min: int = 30         # minutos sin mensajes para dar la conversación por terminada
+    telegram_reminder_min: int = 30        # avisarte N minutos antes de un evento (0 = no avisar)
+    telegram_morning: str = ""             # hora del mensaje de buenos días, ej. "08:30" (vacío = no)
+    telegram_wait_s: float = 2.5           # espera a que termines de escribir antes de responder
 
     @property
     def db_path(self) -> Path:
@@ -84,6 +99,12 @@ class Config:
             history_messages=_int(e("ALI_HISTORY_MESSAGES"), cls.history_messages),
             memories_per_turn=_int(e("ALI_MEMORIES_PER_TURN"), cls.memories_per_turn),
             skills=[s.strip() for s in skills_env.split(",") if s.strip()] if skills_env else list(ALL_SKILLS),
+            telegram_token=e("TELEGRAM_BOT_TOKEN") or None,
+            telegram_user_id=_int(e("TELEGRAM_USER_ID"), 0) or None,
+            telegram_session_min=_int(e("ALI_TELEGRAM_SESION_MIN"), cls.telegram_session_min),
+            telegram_reminder_min=_int(e("ALI_TELEGRAM_AVISO_MIN"), cls.telegram_reminder_min),
+            telegram_morning=(e("ALI_TELEGRAM_BUENOS_DIAS") or "").strip(),
+            telegram_wait_s=_float(e("ALI_TELEGRAM_ESPERA"), cls.telegram_wait_s),
         )
 
     def ensure_dirs(self) -> None:

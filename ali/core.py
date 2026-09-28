@@ -29,9 +29,9 @@ from .storage import Database
 from .utils import fecha_larga, image_block, iso, momento_del_dia, now
 
 GREETING_PROMPT = (
-    "(Tu pareja acaba de abrir el chat; todavía no ha escrito nada. Salúdale tú primero con naturalidad, "
+    "Tu pareja acaba de abrir el chat; todavía no ha escrito nada. Salúdale tú primero con naturalidad, "
     "según la hora, el tiempo que ha pasado desde la última vez y lo que sabes. Si hay algo pendiente o "
-    "importante de lo que preguntar, puedes hacerlo. Sé breve.)"
+    "importante de lo que preguntar, puedes hacerlo. Sé breve."
 )
 
 
@@ -73,6 +73,7 @@ class Ali:
         self.ctx = SkillContext(config, self.db, self.memory, self.personality)
         self.skills = SkillSet.load(config.skills, self.ctx)
 
+        self.channel = "la terminal de su computadora"  # por dónde están hablando (lo cambia cada interfaz)
         self.session_id: int | None = None
         self.system_prompt = ""
         self.messages: list[dict[str, Any]] = []   # conversación tal como se envía a Claude
@@ -152,6 +153,7 @@ class Ali:
         at = now()
         parts = [f"Ahora: {fecha_larga(at)} ({momento_del_dia(at)})."]
         if self._first_turn:
+            parts.append(f"Están hablando por {self.channel}.")
             if self.messages:
                 parts.append("Empieza una conversación nueva; los mensajes anteriores son de la vez pasada.")
             if self._briefing:
@@ -164,7 +166,15 @@ class Ali:
 
     def greet(self) -> Iterator[Event]:
         """Ali abre la conversación ella misma."""
-        yield from self._turn(GREETING_PROMPT, (), persist_user=False, query="")
+        yield from self.proactive(GREETING_PROMPT)
+
+    def proactive(self, instruction: str) -> Iterator[Event]:
+        """Ali escribe por iniciativa propia (saludo, recordatorio, buenos días...).
+
+        `instruction` le explica la situación; no se guarda como mensaje tuyo.
+        """
+        note = f"(Nota del sistema, no la escribió tu pareja: {instruction})"
+        yield from self._turn(note, (), persist_user=False, query="")
 
     def chat(self, user_text: str, images: Iterable[Path] = ()) -> Iterator[Event]:
         """Envía un mensaje a Ali y va entregando su respuesta en eventos."""

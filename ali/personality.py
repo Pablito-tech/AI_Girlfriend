@@ -96,6 +96,16 @@ class Personality:
             rasgos[name] = {"valor": round(_clamp(current, lo, hi), 3), "base": base}
         for style, weight in self.persona.get("humor", {}).get("estilos", {}).items():
             self.state["humor"]["estilos"].setdefault(style, weight)
+        # Gustos agregados al ADN después de nacer: se suman (los que ya tenía no se tocan).
+        known = {normalize(g["tema"]) for g in self.state["gustos"]}
+        seeds = self.state.setdefault("gustos_semilla", sorted(known))
+        for g in self.persona.get("gustos", []):
+            key = normalize(g["tema"])
+            if key not in known and key not in seeds:
+                self.state["gustos"].append({"tema": g["tema"], "opinion": g["opinion"], "fecha": iso(now())})
+                known.add(key)
+            if key not in seeds:
+                seeds.append(key)
 
     def save(self) -> None:
         if not self.path:

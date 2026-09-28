@@ -7,10 +7,10 @@ import shlex
 import sys
 from pathlib import Path
 
+from . import commands
 from .brain import Event
 from .config import Config
-from .core import Ali, friendly_error
-from .utils import hace_cuanto, parse_dt
+from .core import Ali
 
 TOOL_LABELS = {
     "guardar_recuerdo": "guardó un recuerdo",
@@ -130,34 +130,17 @@ class Chat:
         if cmd in ("/ayuda", "/help"):
             print(HELP)
         elif cmd == "/recuerdos":
-            if args:
-                results = ali.memory.search(" ".join(args), limit=15, min_score=0.0, touch=False)
-                mems = [r.memory for r in results]
-            else:
-                mems = ali.memory.recent(15)
-            print("\n".join(m.render() for m in mems) or "Aún no hay recuerdos.")
-            print(self.s.dim(f"({ali.memory.count()} recuerdos en total)"))
+            print(commands.memories(ali, " ".join(args)))
         elif cmd == "/olvidar":
-            if args and args[0].lstrip("#").isdigit():
-                ok = ali.memory.delete(int(args[0].lstrip("#")))
-                print("Olvidado." if ok else "No existe ese recuerdo.")
-            else:
-                print("Uso: /olvidar <id>")
+            print(commands.forget(ali, args[0] if args else ""))
         elif cmd == "/agenda":
-            print(self._run_tool("ver_agenda", {}))
+            print(commands.run_tool(ali, "ver_agenda"))
         elif cmd == "/obras":
-            print(self._run_tool("ver_obras", {}))
+            print(commands.run_tool(ali, "ver_obras"))
         elif cmd == "/perfil":
-            u = ali.personality.user
-            print(f"Nombre: {u['nombre'] or '(desconocido)'}")
-            if u["apodos"]:
-                print("Apodos: " + ", ".join(u["apodos"]))
-            for k, v in sorted(u["datos"].items()):
-                print(f"- {k}: {v}")
-            if u["estilo_comunicacion"]:
-                print(f"Tu estilo: {u['estilo_comunicacion']}")
+            print(commands.profile(ali))
         elif cmd == "/ali":
-            self._show_personality()
+            print(commands.personality(ali))
         elif cmd == "/ver":
             if not args:
                 print("Uso: /ver <ruta_imagen> [mensaje]")
@@ -168,46 +151,13 @@ class Chat:
                 return True
         elif cmd == "/reflexionar":
             print(self.s.dim(f"({ali.name} se queda pensando…)"))
-            try:
-                r = ali.reflect()
-                print(self.s.dim(f"Listo: {len(r.recuerdos)} recuerdos consolidados." if r else "No había nada nuevo."))
-            except Exception as e:
-                print(self.s.err(friendly_error(e, ali.config.model)))
+            print(self.s.dim(commands.reflect(ali)))
         elif cmd == "/exportar":
             print(f"Exportado en: {ali.export()}")
         else:
             print("Comando desconocido. Escribe /ayuda.")
         print()
         return True
-
-    def _run_tool(self, name: str, args: dict) -> str:
-        if not self.ali.skills.get(name):
-            return "Esa habilidad no está activada."
-        output, _ = self.ali.skills.execute(name, args)
-        return output if isinstance(output, str) else str(output)
-
-    def _show_personality(self) -> None:
-        p = self.ali.personality
-        label, _ = p.familiarity_level()
-        rel = p.relationship
-        print(f"{p.name} — confianza: {label} ({p.familiarity():.2f})")
-        sesiones, mensajes = rel["sesiones"], rel["mensajes"]
-        print(f"Se conocieron {hace_cuanto(parse_dt(rel['conocidos_desde']))} · "
-              f"{sesiones} conversaci{'ón' if sesiones == 1 else 'ones'} · "
-              f"{mensajes} mensaje{'' if mensajes == 1 else 's'}")
-        print(f"Ánimo: {p.state['animo']['estado']}")
-        print("Rasgos:")
-        for name, v, desc in p.traits():
-            bar = "█" * round(v * 10) + "░" * (10 - round(v * 10))
-            print(f"  {name:<11} {bar} {v:.2f}  {desc}")
-        print("Humor:")
-        for style, w in p.humor_styles():
-            print(f"  {w:.2f}  {style}")
-        jokes = p.state["humor"]["chistes_internos"]
-        if jokes:
-            print("Bromas internas: " + " · ".join(j["chiste"] for j in jokes))
-        print(f"Gustos propios: {len(p.state['gustos'])} (el más reciente: {p.state['gustos'][-1]['tema']})"
-              if p.state["gustos"] else "Gustos propios: ninguno aún")
 
     # --- bucle principal -------------------------------------------------
 

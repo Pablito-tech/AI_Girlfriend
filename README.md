@@ -69,7 +69,8 @@ La primera vez te pregunta tu nombre; después Ali te saluda y ya pueden platica
 
 ```
 AI_Girlfriend/
-├── main.py                  ← python main.py
+├── main.py                  ← python main.py         (hablar en la terminal)
+├── telegram_bot.py          ← python telegram_bot.py (hablar por Telegram)
 ├── config/persona.toml      ← el ADN de Ali (edítalo para personalizarla)
 ├── ali/
 │   ├── core.py              ← Ali: une todo (sesiones, contexto, persistencia)
@@ -80,6 +81,8 @@ AI_Girlfriend/
 │   ├── reflection.py        ← reflexión al final de cada sesión
 │   ├── storage.py           ← base de datos SQLite
 │   ├── cli.py               ← interfaz de terminal
+│   ├── telegram_bot.py      ← interfaz de Telegram
+│   ├── commands.py          ← comandos compartidos (/ali, /agenda...)
 │   └── skills/              ← habilidades (plugins)
 │       ├── base.py          ← cómo se define una habilidad
 │       ├── memoria.py       ← guardar/buscar recuerdos, datos tuyos
@@ -161,6 +164,8 @@ refuerza en vez de repetirlo.
 
 - **`config/persona.toml`** es quién es Ali al nacer: descripción, forma de hablar, valores,
   rasgos iniciales, estilos de humor y gustos semilla. **Edítalo para personalizarla.**
+  Si agregas un `[[gustos]]` nuevo después de conocerla, lo incorpora la próxima vez que la
+  abras (sin tocar las opiniones que ya formó).
 - **`data/personalidad.json`** es quién es Ali *hoy*. Se guarda al instante cada vez que
   cambia, así que sobrevive a cualquier reinicio.
 
@@ -215,8 +220,8 @@ personalidad. También puedes cargar habilidades de otro paquete: `ALI_SKILLS=..
 
 ### Otras interfaces
 
-`ali.core.Ali` no depende de la terminal. Para hacer un bot de Discord/Telegram, una web o
-una interfaz de voz:
+`ali.core.Ali` no depende de la terminal (el bot de Telegram está hecho así). Para hacer
+otra interfaz (Discord, una web, voz...):
 
 ```python
 from ali import Ali, Config
@@ -229,6 +234,83 @@ ali.end_session()   # consolida recuerdos al terminar
 ```
 
 ---
+
+## Hablar con Ali por Telegram
+
+Así puedes hablar con Ali desde el celular. Además, por Telegram **ella te escribe
+primero**: te recuerda lo que tienes en la agenda y, si quieres, te da los buenos días.
+
+### 1. Crea tu bot (2 minutos)
+
+1. En Telegram, busca **@BotFather** (tiene palomita azul) y ábrelo.
+2. Escríbele `/newbot`.
+3. Te pide un **nombre** (el que verás en el chat), por ejemplo `Ali`.
+4. Te pide un **usuario** que termine en `bot`, por ejemplo `ali_de_sam_bot` (tiene que ser único).
+5. Te responde con un **token** parecido a `123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw`.
+   Cópialo. **Es secreto:** quien lo tenga controla tu bot.
+
+Opcional: con `/setuserpic` en @BotFather le puedes poner foto a Ali.
+
+### 2. Pon el token en tu `.env`
+
+En el mismo archivo `.env` donde está tu API key, agrega (sin `#` al inicio):
+
+```
+TELEGRAM_BOT_TOKEN=123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw
+```
+
+### 3. Consigue tu ID de Telegram
+
+Ali sólo le habla a **tu** cuenta, así que necesita tu ID:
+
+```bash
+python telegram_bot.py
+```
+
+La primera vez arranca en *modo configuración*. Abre tu bot en Telegram (búscalo por su
+usuario), escríbele cualquier cosa y te responderá con tu ID. Ponlo en el `.env`:
+
+```
+TELEGRAM_USER_ID=123456789
+```
+
+Apaga el bot con `Ctrl+C`.
+
+### 4. ¡Listo!
+
+```bash
+python telegram_bot.py
+```
+
+Deja esa ventana abierta mientras quieras que Ali esté "en línea" y escríbele desde
+Telegram. Para apagarla, `Ctrl+C`: antes de apagarse responde lo pendiente y guarda sus
+recuerdos.
+
+### Qué puede hacer por Telegram
+
+- **Chatear como una persona**: si mandas varios mensajes seguidos, espera a que termines
+  y responde todo junto, en burbujas separadas.
+- **Fotos**: mándale una foto o captura (con o sin texto) y la comenta. Se guarda en
+  `data/archivos/telegram/` para que pueda volver a verla después.
+- **Archivos**: mándale un archivo de texto y lo puede leer; queda en la misma carpeta.
+- **Recordatorios**: te escribe antes de tus eventos de la agenda (30 min por defecto).
+- **Buenos días** (opcional): con `ALI_TELEGRAM_BUENOS_DIAS=08:30` te escribe cada mañana y
+  te menciona tu agenda del día.
+- **Comandos** en el menú del chat: `/ali`, `/perfil`, `/recuerdos`, `/agenda`, `/obras`,
+  `/reflexionar`, `/exportar` (te manda el respaldo como archivo) y `/ayuda`.
+- **Notas de voz**: todavía no (próxima fase).
+
+Como en Telegram no escribes `/salir`, la conversación se da por terminada tras
+**30 minutos sin mensajes** (`ALI_TELEGRAM_SESION_MIN`); ahí Ali repasa lo que hablaron.
+
+### Para tener en cuenta
+
+- **Tu computadora debe estar encendida** con `python telegram_bot.py` corriendo. Si la
+  apagas, los mensajes que le mandes le llegan cuando la vuelvas a encender (Telegram los
+  guarda hasta 24 horas).
+- **Usa una sola "puerta" a la vez**: no corras `main.py` y `telegram_bot.py` al mismo
+  tiempo, porque las dos comparten la misma memoria y podrían pisarse los cambios.
+- Si alguien más encuentra tu bot y le escribe, Ali lo ignora: no gasta tu API.
 
 ## Ver anime juntos
 
@@ -261,6 +343,12 @@ Todo se ajusta en `.env` (ver `.env.example`):
 | `ALI_REFLECT_EVERY` | `30` | Reflexionar cada N mensajes tuyos (0 = sólo al salir) |
 | `ALI_HISTORY_MESSAGES` | `20` | Mensajes de la vez pasada que recuerda textualmente |
 | `ALI_MEMORIES_PER_TURN` | `5` | Recuerdos que le vienen a la mente por mensaje |
+| `TELEGRAM_BOT_TOKEN` | — | Token de tu bot (de @BotFather) |
+| `TELEGRAM_USER_ID` | — | Tu ID de Telegram: Ali sólo te habla a ti |
+| `ALI_TELEGRAM_SESION_MIN` | `30` | Minutos sin mensajes para cerrar la conversación |
+| `ALI_TELEGRAM_AVISO_MIN` | `30` | Minutos antes de un evento para avisarte (0 = no) |
+| `ALI_TELEGRAM_BUENOS_DIAS` | vacío | Hora del mensaje de buenos días, ej. `08:30` |
+| `ALI_TELEGRAM_ESPERA` | `2.5` | Segundos que espera a que termines de escribir |
 
 **Costos**: cada mensaje es una llamada a la API; al salir hay una llamada extra para la
 reflexión. La conversación usa caché de prompts (el prompt de sistema y el historial se
@@ -293,8 +381,8 @@ Las pruebas usan un cliente de Claude simulado, así que no gastan tu API.
 
 ## Ideas para después
 
-- Voz (texto a voz / voz a texto) usando `Ali.chat` como motor.
-- Bot de Telegram o Discord para hablar desde el celular.
+- Notas de voz en Telegram (que te escuche y te conteste con voz).
+- Bot de Discord.
 - Búsqueda semántica de recuerdos con embeddings.
 - Notificaciones del sistema para los recordatorios de la agenda.
 - "Ver" un episodio completo por escenas, comentando en tiempo real.

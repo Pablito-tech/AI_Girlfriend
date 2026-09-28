@@ -73,3 +73,28 @@ def test_familiarity_grows_with_time_together(config, clock):
     p.relationship["sesiones"] = 30
     p.relationship["mensajes"] = 900
     assert p.familiarity_level()[0] == "inseparables"
+
+
+def test_new_tastes_added_to_persona_later_are_learned_once(config, clock, tmp_path):
+    p = load(config)
+    p.add_taste("anime", "Ahora prefiere el shonen.")  # Ali cambió de opinión por su cuenta
+    p.save()
+
+    persona = config.persona_file.read_text(encoding="utf-8") + (
+        '\n[[gustos]]\ntema = "videojuegos"\nopinion = "Ama los indies con buena historia."\n'
+    )
+    new_persona = tmp_path / "persona.toml"
+    new_persona.write_text(persona, encoding="utf-8")
+
+    again = Personality.load(new_persona, config.personality_path)
+    topics = [g["tema"] for g in again.state["gustos"]]
+    assert topics.count("videojuegos") == 1
+    assert next(g for g in again.state["gustos"] if g["tema"] == "anime")["opinion"] == "Ahora prefiere el shonen."
+
+    # si luego Ali cambia su opinión de videojuegos, el ADN no la vuelve a pisar
+    again.add_taste("videojuegos", "Se volvió fan de los juegos de pelea.")
+    again.save()
+    third = Personality.load(new_persona, config.personality_path)
+    assert [g["opinion"] for g in third.state["gustos"] if g["tema"] == "videojuegos"] == [
+        "Se volvió fan de los juegos de pelea."
+    ]
