@@ -243,3 +243,17 @@ def test_failed_first_turn_keeps_the_briefing_for_the_retry(config, clock):
     drain(ali.chat("hola"))            # falla
     drain(ali.chat("hola otra vez"))   # reintento: el briefing sigue ahí
     assert "Cita con el dentista" in client.messages.calls[-1]["messages"][-1]["content"][0]["text"]
+
+
+@pytest.mark.parametrize("key,expected", [
+    ("sk-ant-api03-" + "a" * 90 + "AA", None),
+    ("sk-ant-api03-AbCdE...xYz", "..."),
+    ("sk-ant-api03-AbCdE…xYz", "..."),
+    ("sk-ant-api03-" + "a" * 40 + " " + "b" * 40, "espacios"),
+    ("clave-" + "a" * 90, "sk-ant-"),
+    ("sk-ant-api03-abc", "incompleta"),
+])
+def test_api_key_problems_are_explained(config, key, expected):
+    config.api_key = key
+    problem = config.api_key_problem()
+    assert (problem is None) if expected is None else (expected in problem)

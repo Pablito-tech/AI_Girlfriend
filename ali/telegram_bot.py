@@ -482,6 +482,10 @@ def run(config: Config | None = None) -> None:
     if not config.telegram_token:
         print("⚠ Falta TELEGRAM_BOT_TOKEN en tu archivo .env. Créalo hablando con @BotFather (ver README).")
         return
+    problem = config.api_key_problem()
+    if problem and config.telegram_user_id:  # en modo configuración todavía no hace falta
+        print(f"⚠ {problem}")
+        return
 
     builder = Application.builder().token(config.telegram_token)
 

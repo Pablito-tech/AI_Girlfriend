@@ -218,9 +218,10 @@ def main() -> None:
         except (AttributeError, ValueError):
             pass
     config = Config.from_env()
-    if not config.api_key and not os.environ.get("ANTHROPIC_AUTH_TOKEN"):
-        print("⚠ No encontré ANTHROPIC_API_KEY. Copia .env.example a .env y pon ahí tu API key\n"
-              "  de https://platform.claude.com (o expórtala como variable de entorno).\n")
+    problem = config.api_key_problem()
+    if problem:
+        print(f"⚠ {problem}")
+        return
     Chat(Ali(config)).run()
 
 

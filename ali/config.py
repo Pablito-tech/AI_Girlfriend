@@ -110,3 +110,24 @@ class Config:
     def ensure_dirs(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.files_dir.mkdir(parents=True, exist_ok=True)
+
+    def api_key_problem(self) -> str | None:
+        """Detecta errores comunes al copiar la API key. Devuelve el problema o None."""
+        key = self.api_key
+        if not key:
+            if os.environ.get("ANTHROPIC_AUTH_TOKEN"):
+                return None
+            return ("No encontré ANTHROPIC_API_KEY. Copia .env.example a .env y pon ahí tu API key\n"
+                    "  de https://platform.claude.com (sección API Keys).")
+        if "..." in key or "…" in key:
+            return ("Tu API key tiene '...': es la versión recortada que muestra la lista de keys.\n"
+                    "  La key completa sólo se ve una vez, al crearla. Crea una nueva en\n"
+                    "  platform.claude.com → API Keys → Create Key, y cópiala entera en tu .env.")
+        if any(c.isspace() for c in key):
+            return "Tu API key tiene espacios o saltos de línea en medio. Revisa que esté en una sola línea."
+        if not key.startswith("sk-ant-"):
+            return "Tu API key no empieza con 'sk-ant-'. Revisa que copiaste la key correcta."
+        if len(key) < 60:
+            return (f"Tu API key parece incompleta (sólo tiene {len(key)} caracteres; una completa\n"
+                    "  tiene alrededor de 100). Crea una nueva y cópiala entera.")
+        return None
